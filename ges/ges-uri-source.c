@@ -205,6 +205,24 @@ update_z_order_cb (GESClip * clip, GParamSpec * arg G_GNUC_UNUSED,
   gst_object_unref (layer);
 }
 
+/* Update duration and max duration when rate is changed */
+static void
+rate_callback (GstElement * videorate G_GNUC_UNUSED,
+    GParamSpec * arg G_GNUC_UNUSED, GESTimelineElement * parent)
+{
+  gdouble rate;
+  GstClockTime max_duration;
+  GstClockTime duration;
+
+  g_object_get (videorate, "rate", &rate, NULL);
+
+  max_duration = ges_timeline_element_get_max_duration (parent) / rate;
+  duration = ges_timeline_element_get_duration (parent) / rate;
+
+  ges_timeline_element_set_max_duration (parent, max_duration);
+  ges_timeline_element_set_duration (parent, duration);
+}
+
 static GstElement *
 ges_uri_source_create_element (GESTrackElement * trksrc)
 {
@@ -253,6 +271,8 @@ ges_uri_source_create_element (GESTrackElement * trksrc)
         g_signal_connect (parent, "notify::layer",
             (GCallback) update_z_order_cb, trksrc);
         update_z_order_cb (GES_CLIP (parent), NULL, self);
+        g_signal_connect (videorate, "notify::rate", G_CALLBACK (rate_callback),
+            parent);
         gst_object_unref (parent);
       } else {
         GST_WARNING ("No parent timeline element, SHOULD NOT HAPPEN");
